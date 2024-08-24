@@ -1,4 +1,4 @@
-##Pasos para instalación
+## Pasos para instalación
 
 los pasos a seguir para la instalación fueron los mencionados en el documento de la tarea 0, si lo queremos mencionar desde la manera en como lo hice seria de la siguiente manera: 
 1-Se clona el repositorio de xv6-riscv.
