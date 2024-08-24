@@ -20,4 +20,4 @@ Los comandos son los siguientes:
 - `echo "Hola xv6"`
 - `cat README`
 
-Luego de todo esto, podemos decir que xv6 funcion correctamente.
+Luego de todo esto, podemos decir que xv6 funciona correctamente.
