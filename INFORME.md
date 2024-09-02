@@ -1,23 +1,38 @@
-##Pasos para instalación
+## Funcionamiento llamadas al sistema
+### `getppid(void)`
 
-los pasos a seguir para la instalación fueron los mencionados en el documento de la tarea 0, si lo queremos mencionar desde la manera en como lo hice seria de la siguiente manera: 
-1-Se clona el repositorio de xv6-riscv.
-2-Se crea una nueva rama llamada tarea0.
-3-Se instalaron las dependencias necesarias para que funcionara el programa.
-4-Se usa el comando "make" para compilar xv6.
-5-Se logra una ejecución correcta de xv6 al usar el comando "make qemu".
+La llamada al sistema `getppid` permite obtener el ID del proceso padre del proceso que la invoca.
 
-## Problemas Encontrados
+- **Retorno**: El ID del proceso padre.
+- **Ejemplo**:
+  - Un proceso con PID 4 puede invocar `getppid()` para obtener el PID de su proceso padre.
 
-Se encontró un problema, el cual era ocasionado por el archivo "risv.h"
-La solución para este problema fue editar el archivo que se encuentra en kernel y luego de eso no hubieron problemas.
 
-##Confirmación Funcionamiento
+### `getancestor(int level)`
 
-Luego de la instalación, se probaron los comandos sugeridos por el profesor para ver si funcionaba de manera correcta el programa, comandos que funcionaban de buena manera y serán mostrados en la foto adjuntada.
-Los comandos son los siguientes:
-- `ls`
-- `echo "Hola xv6"`
-- `cat README`
+La llamada al sistema `getancestor` permite obtener el ID de un proceso ancestro en función de un nivel especificado. El funcionamiento es el siguiente:
 
-Luego de todo esto, podemos decir que xv6 funcion correctamente.
+- **Parámetro**: Un entero `level` que indica el nivel del ancestro deseado:
+  - `level = 0` retorna el mismo proceso.
+  - `level = 1` retorna el proceso padre.
+  - `level = 2` retorna el abuelo.
+  - Y así sucesivamente.
+- **Retorno**: El ID del proceso ancestro en el nivel indicado, o `-1` si no existe tal ancestro.
+- **Ejemplo**:
+  - `getancestor(0)` -> Retorna el PID del proceso actual.
+  - `getancestor(1)` -> Retorna el PID del proceso padre.
+  - `getancestor(2)` -> Retorna el PID del abuelo, etc.
+
+## Explicación de las Modificaciones Realizadas
+
+### Modificación para `getppid` y `getancestor`
+Se modificaron los archivos `sysproc.c`, `syscall.c`, `usys.pl`, `Makefile`, `user.h` y `syscall.h`.
+En estos archivos se agregaron las funciones y los prototipos de la llamada al sistema tanto de `getppid` y de `getancestor`, para lograr su buena incorporación.
+
+## Dificultades Encontradas y Cómo se Resolvían 
+El error encontrado tiene que ver con la función `getancestors`, la cual daba un error de querer toamr un valor como int en void.
+La solución a esto fue mover una parte del código de `getancestors` una linea más arriba para asi llamarla antes de trabajar, y luego reemplazar la indentada con la letra n.
+
+##Pruebas
+Para probar que funciona debe escribir en qemu `yosoytupadre`, esto dará como resultado tanto la función `getppid` como `getancestors` en una fase de prueba buena.
+Si quiere realizar solo una prueba de `getppid` escriba `test_getppid`.

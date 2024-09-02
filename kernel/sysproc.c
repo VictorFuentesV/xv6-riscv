@@ -6,6 +6,7 @@
 #include "spinlock.h"
 #include "proc.h"
 
+
 uint64
 sys_exit(void)
 {
@@ -90,4 +91,44 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+
+
+uint64
+sys_getppid(void)
+{
+    struct proc *p = myproc();  // Obtener el proceso actual
+    if (p->parent)
+        return p->parent->pid;  // Retornar el PID del padre
+    return -1;  // Si no tiene padre, retornar -1
+}
+
+
+uint64
+sys_getancestor(void)
+{
+    int n;
+    argint(0, &n);
+    if(n < 0)
+        return -1;
+    
+    if(n < 0)
+        return -1;  // Número negativo no es válido
+
+    struct proc *p = myproc();  // Obtener el proceso actual.
+
+    // Si n es 0, devolver el PID del proceso actual
+    if(n == 0)
+        return p->pid;
+
+    // Subir por el árbol de procesos
+    while (n > 0) {
+        if(p->parent == 0)
+            return -1;  // No hay suficientes ancestros
+        p = p->parent;
+        n--;
+    }
+
+    return p->pid;
 }
