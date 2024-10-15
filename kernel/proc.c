@@ -120,6 +120,9 @@ allocproc(void)
     }
   }
   return 0;
+  
+  p->priority = 0; // Inicializa la prioridad a 0.
+  p->boost = 1;    // Inicializa el boost a 1.
 
 found:
   p->pid = allocpid();
@@ -446,39 +449,53 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-
   c->proc = 0;
+
   for(;;){
-    // The most recent process to run may have had interrupts
-    // turned off; enable them to avoid a deadlock if all
-    // processes are waiting.
+    // Activa las interrupciones en este procesador.
     intr_on();
 
-    int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+    // Buscar el proceso con la mayor prioridad (menor número).
+    struct proc *highest_priority_proc = 0;
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-        found = 1;
+    for(p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE){
+        // Selecciona el proceso con la mayor prioridad.
+        if(highest_priority_proc == 0 || p->priority < highest_priority_proc->priority){
+          if(highest_priority_proc)
+            release(&highest_priority_proc->lock);
+          highest_priority_proc = p;
+          continue;
+        }
       }
       release(&p->lock);
     }
-    if(found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
-      intr_on();
-      asm volatile("wfi");
+
+    if(highest_priority_proc){
+      p = highest_priority_proc;
+      p->state = RUNNING;
+      c->proc = p;
+
+      swtch(&c->context, &p->context);
+      c->proc = 0;
+
+      // Después de la ejecución, actualizar la prioridad de los procesos RUNNABLE.
+      for(struct proc *q = proc; q < &proc[NPROC]; q++){
+        if(q->state == RUNNABLE && q != p){
+          q->priority += q->boost;
+          if(q->priority >= 9)
+            q->boost = -1;
+          else if(q->priority <= 0)
+            q->boost = 1;
+        }
+      }
+
+      release(&p->lock);
     }
   }
 }
+
 
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores

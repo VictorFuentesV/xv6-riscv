@@ -1,3 +1,4 @@
+
 ## INFORME TAREA 2
 El funcionamiento de esta tarea tiene que ver con el sistema de prioridad, donde tenemos prioridad y boost, prioridad refiriendose a la prioridad de los archivos donde el valor más bajo indica mayor prioridad, y un boost que aumenta la prioridad del proceso cuando se ejectua.
 De esta manera ejecutamos a todos los hijos luego del proceso padre, con la prioridad correspondiente, y cada vez que se ejecuta se incrementa la prioridad de todos los demas procesos.
