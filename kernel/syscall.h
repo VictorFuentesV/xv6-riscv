@@ -20,3 +20,5 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#define SYS_mprotect 23  // Número de la syscall mprotect
+#define SYS_munprotect 24  // Número de la syscall munprotect

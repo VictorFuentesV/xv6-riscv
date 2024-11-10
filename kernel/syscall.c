@@ -101,6 +101,8 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+extern uint64 sys_mprotect(void);
+extern uint64 sys_munprotect(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -126,6 +128,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_mprotect]  sys_mprotect,    
+[SYS_munprotect] sys_munprotect,
 };
 
 void
@@ -144,4 +148,66 @@ syscall(void)
             p->pid, p->name, num);
     p->trapframe->a0 = -1;
   }
+}
+
+uint64
+sys_mprotect(void) {
+    uint64 addr;
+    int len;
+    struct proc *p = myproc();
+
+    argaddr(0, &addr);
+    argint(1, &len);
+
+    // Validaciones
+    if(len <= 0)
+        return -1;
+
+    if((addr % PGSIZE) != 0) // Verificar alineación de página
+        return -1;
+
+    if((addr >= p->sz) || ((addr + (len * PGSIZE)) > p->sz)) // Verificar rango válido
+        return -1;
+
+    // Recorrer las páginas y modificar los permisos
+    for(uint64 a = addr; a < addr + len * PGSIZE; a += PGSIZE) {
+        pte_t *pte = walk(p->pagetable, a, 0);
+        if(pte == 0 || (*pte & PTE_V) == 0)
+            return -1;
+        *pte &= ~PTE_W;  // Deshabilitar escritura
+    }
+    
+    sfence_vma(); // Limpiar TLB
+    return 0;
+}
+
+uint64
+sys_munprotect(void) {
+    uint64 addr;
+    int len;
+    struct proc *p = myproc();
+
+    argaddr(0, &addr);
+    argint(1, &len);
+
+    // Validaciones
+    if(len <= 0)
+        return -1;
+
+    if((addr % PGSIZE) != 0) // Verificar alineación de página
+        return -1;
+
+    if((addr >= p->sz) || ((addr + (len * PGSIZE)) > p->sz)) // Verificar rango válido
+        return -1;
+
+    // Recorrer las páginas y modificar los permisos
+    for(uint64 a = addr; a < addr + len * PGSIZE; a += PGSIZE) {
+        pte_t *pte = walk(p->pagetable, a, 0);
+        if(pte == 0 || (*pte & PTE_V) == 0)
+            return -1;
+        *pte |= PTE_W;  // Habilitar escritura
+    }
+    
+    sfence_vma(); // Limpiar TLB
+    return 0;
 }
