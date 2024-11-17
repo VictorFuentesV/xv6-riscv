@@ -15,18 +15,18 @@ struct file {
 
 // in-memory copy of an inode
 struct inode {
-  uint dev;           // Device number
-  uint inum;          // Inode number
-  int ref;            // Reference count
-  struct sleeplock lock; // protects everything below here
-  int valid;          // inode has been read from disk?
-
-  short type;         // copy of disk inode
+  uint dev;           // Número de dispositivo
+  uint inum;          // Número de inode
+  int ref;            // Contador de referencias
+  struct sleeplock lock; // Protege todo lo siguiente
+  int valid;          // El inode ha sido leído del disco?
+  short type;         // Tipo de archivo
   short major;
   short minor;
   short nlink;
   uint size;
   uint addrs[NDIRECT+1];
+  int perms;          // Permisos del archivo (nuevo campo)
 };
 
 // map major device number to device functions.
@@ -38,3 +38,4 @@ struct devsw {
 extern struct devsw devsw[];
 
 #define CONSOLE 1
+

@@ -310,8 +310,7 @@ sys_open(void)
   struct inode *ip;
   int n;
 
-  argint(1, &omode);
-  if((n = argstr(0, path, MAXPATH)) < 0)
+  if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
 
   begin_op();
@@ -328,39 +327,29 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
+    if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
       iunlockput(ip);
       end_op();
       return -1;
     }
   }
 
-  if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
-    iunlockput(ip);
-    end_op();
-    return -1;
+  // Verificar permisos
+  if((omode & O_WRONLY) || (omode & O_RDWR)){
+    if(!(ip->perms & 2)){  // No tiene permiso de escritura
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
   }
-
-  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
-    if(f)
-      fileclose(f);
-    iunlockput(ip);
-    end_op();
-    return -1;
+  
+  if((omode & O_RDONLY) || (omode & O_RDWR)){
+    if(!(ip->perms & 1)){  // No tiene permiso de lectura
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
   }
-
-  if(ip->type == T_DEVICE){
-    f->type = FD_DEVICE;
-    f->major = ip->major;
-  } else {
-    f->type = FD_INODE;
-    f->off = 0;
-  }
-  f->ip = ip;
-  f->readable = !(omode & O_WRONLY);
-  f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
-
-  if((omode & O_TRUNC) && ip->type == T_FILE){
     itrunc(ip);
   }
 
@@ -503,3 +492,4 @@ sys_pipe(void)
   }
   return 0;
 }
+

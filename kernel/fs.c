@@ -214,6 +214,14 @@ ialloc(uint dev, short type)
     }
     brelse(bp);
   }
+
+  dip->type = type;
+  dip->major = 0;
+  dip->minor = 0;
+  dip->nlink = 1;
+  dip->size = 0;
+  dip->perms = 3;  // Inicializar con permisos de lectura y escritura
+  memset(dip->addrs, 0, sizeof(dip->addrs));
   printf("ialloc: no inodes\n");
   return 0;
 }
