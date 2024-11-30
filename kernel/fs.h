@@ -36,6 +36,8 @@ struct dinode {
   short nlink;          // Number of links to inode in file system
   uint size;            // Size of file (bytes)
   uint addrs[NDIRECT+1];   // Data block addresses
+  int perm;               // Permisos del archivo
+  char padding[57];
 };
 
 // Inodes per block.
@@ -46,6 +48,8 @@ struct dinode {
 
 // Bitmap bits per block
 #define BPB           (BSIZE*8)
+
+void readsb(int dev, struct superblock *sb);
 
 // Block of free map containing bit for block b
 #define BBLOCK(b, sb) ((b)/BPB + sb.bmapstart)

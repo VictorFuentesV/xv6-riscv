@@ -27,7 +27,7 @@
 struct superblock sb; 
 
 // Read the super block.
-static void
+void
 readsb(int dev, struct superblock *sb)
 {
   struct buf *bp;
@@ -198,24 +198,24 @@ static struct inode* iget(uint dev, uint inum);
 struct inode*
 ialloc(uint dev, short type)
 {
-  int inum;
-  struct buf *bp;
-  struct dinode *dip;
-
-  for(inum = 1; inum < sb.ninodes; inum++){
-    bp = bread(dev, IBLOCK(inum, sb));
-    dip = (struct dinode*)bp->data + inum%IPB;
-    if(dip->type == 0){  // a free inode
-      memset(dip, 0, sizeof(*dip));
-      dip->type = type;
-      log_write(bp);   // mark it allocated on the disk
-      brelse(bp);
-      return iget(dev, inum);
+   int inum;
+    struct buf *bp;
+    struct dinode *dip;
+    for (inum = 1; inum < sb.ninodes; inum++) {
+        bp = bread(dev, IBLOCK(inum, sb));
+        dip = (struct dinode*)bp->data + inum % IPB;
+        if (dip->type == 0) {  // Un inodo libre
+            memset(dip, 0, sizeof(*dip));
+            dip->type = type;
+            dip->perm = 0;  // Inicializar permisos a 0
+            log_write(bp);  // Marcar como asignado en el disco
+            brelse(bp);
+            return iget(dev, inum);
+        }
+        brelse(bp);
     }
-    brelse(bp);
-  }
-  printf("ialloc: no inodes\n");
-  return 0;
+    printf("ialloc: no inodes\n");
+    return 0;
 }
 
 // Copy a modified in-memory inode to disk.
@@ -225,19 +225,20 @@ ialloc(uint dev, short type)
 void
 iupdate(struct inode *ip)
 {
-  struct buf *bp;
-  struct dinode *dip;
-
-  bp = bread(ip->dev, IBLOCK(ip->inum, sb));
-  dip = (struct dinode*)bp->data + ip->inum%IPB;
-  dip->type = ip->type;
-  dip->major = ip->major;
-  dip->minor = ip->minor;
-  dip->nlink = ip->nlink;
-  dip->size = ip->size;
-  memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-  log_write(bp);
-  brelse(bp);
+   struct buf *bp;
+    struct dinode *dip;
+    bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+    dip = (struct dinode *)bp->data + ip->inum % IPB;
+    dip->type = ip->type;
+    dip->major = ip->major;
+    dip->minor = ip->minor;
+    dip->nlink = ip->nlink;
+    dip->size = ip->size;
+    // Eliminar referencias a ip->perm porque ip es de tipo inode
+    // Si ip->perm no es relevante aquí, basta con sincronizar con dip->perm
+    memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+    log_write(bp);
+    brelse(bp);
 }
 
 // Find the inode with number inum on device dev
@@ -293,27 +294,28 @@ void
 ilock(struct inode *ip)
 {
   struct buf *bp;
-  struct dinode *dip;
+    struct dinode *dip;
+    if (ip == 0 || ip->ref < 1)
+        panic("ilock");
 
-  if(ip == 0 || ip->ref < 1)
-    panic("ilock");
+    acquiresleep(&ip->lock);
 
-  acquiresleep(&ip->lock);
+    if (ip->valid == 0) {
+        bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+        dip = (struct dinode *)bp->data + ip->inum % IPB;
 
-  if(ip->valid == 0){
-    bp = bread(ip->dev, IBLOCK(ip->inum, sb));
-    dip = (struct dinode*)bp->data + ip->inum%IPB;
-    ip->type = dip->type;
-    ip->major = dip->major;
-    ip->minor = dip->minor;
-    ip->nlink = dip->nlink;
-    ip->size = dip->size;
-    memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
-    brelse(bp);
-    ip->valid = 1;
-    if(ip->type == 0)
-      panic("ilock: no type");
-  }
+        ip->type = dip->type;
+        ip->major = dip->major;
+        ip->minor = dip->minor;
+        ip->nlink = dip->nlink;
+        ip->size = dip->size;
+        // Eliminar cualquier referencia a ip->perm
+        memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+        brelse(bp);
+        ip->valid = 1;
+        if (ip->type == 0)
+            panic("ilock: no type");
+    }
 }
 
 // Unlock the given inode.
